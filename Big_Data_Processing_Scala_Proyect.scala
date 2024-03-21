@@ -71,7 +71,8 @@ theHappiest21V2.show
 
 // COMMAND ----------
 
-Question 2 - Solution 1
+// MAGIC %md
+// MAGIC Question 2 - Solution 1
 
 // COMMAND ----------
 
@@ -90,15 +91,63 @@ display(countryRegion21)
 
 // COMMAND ----------
 
-Question 3 - Solution 1
+// MAGIC %md
+// MAGIC Question 3 - Solution 1
+
+// COMMAND ----------
+
+//Create a dataframe with the record of the 2021 winner
+
+val winner2021 = Seq(
+      ("Finland", 2021, 7.842),
+      )
+
+val dfWinner2021 = spark.createDataFrame(winner2021)
+    .toDF("Country", "year", "MaxLifeLeader")
+
+dfWinner2021.show()
+
+// COMMAND ----------
+
+//Create a dataframe with the necessary columns
+
+val dfNewWorldHapRep = dfWorldHapRep.select(col("Country name"), 
+  col("year"), 
+  col("Life Ladder") as ("MaxLifeLeader"))
+
+dfNewWorldHapRep.show()
+
+// COMMAND ----------
+
+//I create a new dataframe with the union of the previous two
+
+val dfAllYearsWH = dfNewWorldHapRep.union(dfWinner2021)
+
+dfAllYearsWH.show()
+
+
+// COMMAND ----------
+
+// Checking the union
+val filtered2021DF = dfAllYearsWH.filter($"year" >= 2021)
+
+
+filteredDF.show(false)
+
+// COMMAND ----------
+
+// Checking the union
+val filtered2017DF = dfAllYearsWH.filter($"year" >= 2017)
+
+filtered2017DF.show(false)
 
 // COMMAND ----------
 
 // Define partition window by year and sort by Life Ladder
-val windowRank = Window.partitionBy("year").orderBy(desc("Life Ladder"))
+val windowRank = Window.partitionBy("year").orderBy(desc("MaxLifeLeader"))
 
 // Add a ranking column using row_number()
-val rankeddf2 = dfWorldHapRep.withColumn("Rank", row_number().over(windowRank))
+val rankeddf2 = dfAllYearsWH.withColumn("Rank", row_number().over(windowRank))
 
 // This function answer the question "Which country has ranked first most times in all years?""
 val topCountry = rankeddf2
@@ -106,15 +155,15 @@ val topCountry = rankeddf2
   .groupBy("Country name")
   .count().as("How many")// This line count how much times a country had won
   .orderBy(desc("count"))// This line order the count in descending order
-  .first()// It takes the first register to take only the winner
 
-
-// Print result
-println(s"The country that has won the most times is ${topCountry.getAs[String]("Country name")} with ${topCountry.getAs[Integer]("count")} victories in 15 years")
+topCountry.show()
 
 // COMMAND ----------
 
-Question 3 - Solution 2
+//Winners
+
+val dfwinners = topCountry.head(2)
+display(dfwinners)
 
 // COMMAND ----------
 
@@ -147,7 +196,7 @@ display(topCountryStats)
 
 // COMMAND ----------
 
-// Define partition windows by year and sort by Log GDP per capita and Life Ladder
+// Define partition windows by yea r and sort by Log GDP per capita and Life Ladder
 val windowRank2 = Window.partitionBy("year").orderBy(desc("Log GDP per capita"))
 val windowRank3 = Window.partitionBy("year").orderBy(desc("Life Ladder"))
 
@@ -163,38 +212,12 @@ val topGDPCountry2020 = rankedGDPdf
   .select("Country name", "Life Ladder", "RankLifeLadder")
   .first()  // Obtener el primer registro, que es el país con el mayor GDP en 2020
 
-// Print result
 println(s"The country with the highest GDP in 2020 was ${topGDPCountry2020.getAs[String]("Country name")} with ${topGDPCountry2020.getAs[Double]("RankLifeLadder")}th position in the happiness ranking and ${topGDPCountry2020.getAs[Double]("Life Ladder")} on the Life Ladder score")
 
 // COMMAND ----------
 
 // MAGIC %md
-// MAGIC Question 4 - Solution 2
-
-// COMMAND ----------
-
-// Define partition windows by year and sort by Log GDP per capita and Life Ladder
-val windowRank2 = Window.partitionBy("year").orderBy(desc("Log GDP per capita"))
-val windowRank3 = Window.partitionBy("year").orderBy(desc("Life Ladder"))
-
-// Add a ranking column using row_number()
-val rankedGDPdf = dfWorldHapRep
-.withColumn("RankGDP", row_number().over(windowRank2))
-.withColumn("RankLifeLadder", row_number().over(windowRank3))
-
-// This function answer the question "What Happiness ranking does the country with the highest GDP in 2020 have?""
-val topGDPCountry2020 = rankedGDPdf
-  .filter(col("year") === 2020)
-  .filter(col("RankGDP") === 1)
-  .select("Country name", "Life Ladder", "RankLifeLadder")
-  .limit(1)  // Obtener el primer registro, que es el país con el mayor GDP en 2020
-
-display(topGDPCountry2020)
-
-// COMMAND ----------
-
-// MAGIC %md
-// MAGIC Question 4 - Solucion 2.1
+// MAGIC Question 4 - Solucion 1.2
 
 // COMMAND ----------
 
@@ -223,8 +246,34 @@ display(topGDPCountry2020DF)
 // COMMAND ----------
 
 // MAGIC %md
+// MAGIC Question 4 - Solution 2
+
+// COMMAND ----------
+
+// Define partition windows by year and sort by Log GDP per capita and Life Ladder
+val windowRank2 = Window.partitionBy("year").orderBy(desc("Log GDP per capita"))
+val windowRank3 = Window.partitionBy("year").orderBy(desc("Life Ladder"))
+
+
+// Add a ranking column using row_number()
+val rankedGDPdf = dfWorldHapRep
+.withColumn("RankGDP", row_number().over(windowRank2))
+.withColumn("RankLifeLadder", row_number().over(windowRank3))
+
+// This function answer the question "What Happiness ranking does the country with the highest GDP in 2020 have?""
+val topGDPCountry2020V2 = rankedGDPdf
+  .filter(col("year") === 2020)
+  .filter(col("RankGDP") === 1)
+  .select("Country name", "Life Ladder", "RankLifeLadder")
+  .limit(1)  // Obtener el primer registro, que es el país con el mayor GDP en 2020
+
+display(topGDPCountry2020V2)
+
+// COMMAND ----------
+
+// MAGIC %md
 // MAGIC ## Question 5: In percentage terms, how much has the Worldwide average GDP changed between 2020 and 2021? Did it increase or decrease?
-// MAGIC #### Pregunta 5: ¿En que porcentaje a variado a nivel mundial el GDP promedio del 2020 respecto al 2021? ¿Aumentó o disminuyó?
+// MAGIC #### Pregunta 5: ¿En que porcentaje ha variado a nivel mundial el GDP promedio del 2020 respecto al 2021? ¿Aumentó o disminuyó?
 
 // COMMAND ----------
 
@@ -265,10 +314,6 @@ dfWorldHapRep20NoNulls.count()
 
 // COMMAND ----------
 
-VAL promedio2020 = dfWorldHapRep20NoNulls.select(avg(col("Log GDP per capita")))
-
-// COMMAND ----------
-
 // Calculate the average of the "Log GDP per capita" column
 val averageGDP2020 = dfWorldHapRep20NoNulls.select(avg(col("Log GDP per capita")).as("average 2020")).collect()(0)(0).asInstanceOf[Double]
 
@@ -279,10 +324,10 @@ println(s"The 2020 average Log GDP per capita is: $averageGDP2020")
 // COMMAND ----------
 
 // Calculate the average of the "Logged GDP per capita" column
-val averageGDP2021 = dfWorldHapRep21NoNulls.select(avg(col("Logged GDP per capita")).as("average 2020")).collect()(0)(0).asInstanceOf[Double]
+val averageGDP2021 = dfWorldHapRep21NoNulls.select(avg(col("Logged GDP per capita")).as("average 2021")).collect()(0)(0).asInstanceOf[Double]
 
 // Imprime el resultado
-//println(s"The 2021 average Log GDP per capita is: $averageGDP2021")
+println(s"The 2021 average Log GDP per capita is: $averageGDP2021")
 //averageGDP2021.show
 
 // COMMAND ----------
